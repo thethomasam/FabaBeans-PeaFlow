@@ -18,8 +18,10 @@ import torch
  
 from peascription import peascripter
 # from pea_trainer_pytorch import train_network
-from peatear import peatearer
+# from peatear import peatearer
 from pealabel import peaLabler
+from peadivide import peatearer
+
 """
 Automated Plant Analysis Workflow
 
@@ -64,9 +66,9 @@ model_output="./models"
 
 
 pea_tearer_image="./analysis/15-6-10-orig.jpg"
-pea_tearer_out ="./output"
+pea_tearer_out ="./output/"
 rows=5
-cols=5
+cols=8
 pealabler_image='./images/peascription-in/15-6-1-orig.jpg'
 
 isResnet=False
@@ -106,24 +108,24 @@ def delete_files_recursively(directory_path):
 
 
 def all_runner(peascription_in_dir_path,peascription_out_dir_path,trainner_annotations,model_output,pea_tearer_image, pea_tearer_out,rows, cols,epochs,transformer,isResnet,verbose=False):
-    delete_files_recursively(peascription_out_dir_path)
-    peascripter(peascription_in_dir_path,peascription_out_dir_path,verbose=False)
-    print('Done Pea Scription')
-    run_trainer=input('Do you want to run the trainer Y/N\n')
-    if run_trainer=='Y' or run_trainer=='y':
-        train_network(trainner_annotations,model_output,isResnet=isResnet,transformer=transformer,epochs=epochs)
+    # delete_files_recursively(peascription_out_dir_path)
+    # peascripter(peascription_in_dir_path,peascription_out_dir_path,verbose=False)
+    # print('Done Pea Scription')
+    # run_trainer=input('Do you want to run the trainer Y/N\n')
+    # if run_trainer=='Y' or run_trainer=='y':
+    #     train_network(trainner_annotations,model_output,isResnet=isResnet,transformer=transformer,epochs=epochs)
     
     peatearer(pea_tearer_image, pea_tearer_out, rows, cols, transformer=transformer,isResnet=isResnet,verbose=False)
 
-    run_labler = input('Do you want to run the labler Y/N\n')
-    if run_labler=='Y' or run_labler=='y':
-        peaLabler(pea_tearer_out, peascription_out_dir_path, verbose)
-        re_train = input('Do you want to retrain the model Y/N\n')
-        if re_train=='Y' or re_train=='y':
-            train_network(trainner_annotations,model_output,isResnet=isResnet)
-            re_analyse_path=input('Do you want to retrain the model Y/N\n')
-            if re_analyse_path:
-                peatearer(pea_tearer_image, pea_tearer_out, rows, cols, verbose=False)
+    # run_labler = input('Do you want to run the labler Y/N\n')
+    # if run_labler=='Y' or run_labler=='y':
+    #     peaLabler(pea_tearer_out, peascription_out_dir_path, verbose)
+    #     re_train = input('Do you want to retrain the model Y/N\n')
+    #     if re_train=='Y' or re_train=='y':
+    #         train_network(trainner_annotations,model_output,isResnet=isResnet)
+    #         re_analyse_path=input('Do you want to retrain the model Y/N\n')
+    #         if re_analyse_path:
+    #             peatearer(pea_tearer_image, pea_tearer_out, rows, cols, verbose=False)
     
 
     

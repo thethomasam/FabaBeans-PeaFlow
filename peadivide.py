@@ -19,6 +19,12 @@ from math import sqrt
 from math import floor
 from random import randint
 
+import numpy as np
+from sklearn.cluster import KMeans
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
 
 SQUARE_SIZE = 64
 
@@ -70,7 +76,15 @@ def merge_overlapping_circles(circles):
     else:
         # No more overlaps. Done.
         return circles
-
+def fit_line(cluster):
+    x = np.array([point[0] for point in cluster])
+    y = np.array([point[1] for point in cluster])
+    
+    model = LinearRegression().fit(x.reshape(-1, 1), y)
+    slope = model.coef_[0]
+    intercept = model.intercept_
+    
+    return slope, intercept
 
 @click.command()
 @click.argument("image_path")
@@ -177,20 +191,53 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
                 colour = (255, 85, 255)  # magenta
                 thickness = 8  # very thick circle perimeter
                 cv2.circle(output_copy, centre, radius, colour, thickness)
-                all_indices.append(centre)
+                centre_adjusted = (centre[0] + c1[1], centre[1] + c1[0])
+                all_indices.append(centre_adjusted)
+
+
             data["row"].append(i + 1)
             data["column"].append(j + 1)
             data["samples"].append(samples)
-            print(samples)
+          
             cv2.imwrite(
                 os.path.join(out_dir_path, "{},{}.jpg".format(i + 1, j + 1)),
                 output_copy,
             )
 
     df = pd.DataFrame(data)
-    print(all_indices)
-    df.to_csv(os.path.join(out_dir_path, "ranking.csv"), index=False)
+    coordinates_list=all_indices
+    for (x, y) in coordinates_list:
+        cv2.circle(img, (x, y), 5, (0, 0, 255), 3)  # Draws a red point
 
+# Perform mean-based clustering
+    coordinates_array = np.array(coordinates_list)
+    print(len(all_indices))
+    num_clusters = 6
+    kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 0].reshape(-1, 1))
+    labels = kmeans.labels_
+    clusters = [[] for _ in range(num_clusters)]
+
+# Populate clusters
+    for i, label in enumerate(labels):
+        clusters[label].append(all_indices[i])
+
+    for i, cluster in enumerate(clusters):
+        slope, intercept = fit_line(cluster)
+        x_values = np.array([point[0] for point in cluster])
+        y_values =  slope * x_values + intercept
+        x_min = int(max(0, min(x_values)))
+        x_max = int(min(img.shape[1], max(x_values)))
+        y_min = min(all_indices, key=lambda point: point[1])[1]
+        y_max = max(all_indices, key=lambda point: point[1])[1]
+        cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+    print('There')
+    cv2.imwrite(
+                os.path.join(out_dir_path, "boxed_img.jpg"),
+                img,
+            )
+
+    df.to_csv(os.path.join(out_dir_path, "ranking.csv"), index=False)
+    print('There finished')
 
 if __name__ == "__main__":
     cli()
