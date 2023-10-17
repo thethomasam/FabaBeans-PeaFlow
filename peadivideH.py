@@ -217,8 +217,8 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
     # Perform mean-based clustering
         coordinates_array = np.array(coordinates_list)
         print(len(all_indices))
-        num_clusters = 6
-        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 0].reshape(-1, 1))
+        num_clusters = 35
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 1].reshape(-1, 1))
         labels = kmeans.labels_
         clusters = [[] for _ in range(num_clusters)]
 
@@ -228,14 +228,14 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
 
         for i, cluster in enumerate(clusters):
             slope, intercept = fit_line(cluster)
-            x_values = np.array([point[0] for point in cluster])
-            y_values =  slope * x_values + intercept
-            x_min = int(max(0, min(x_values)))
-            x_max = int(min(img.shape[1], max(x_values)))
-            y_min = min(all_indices, key=lambda point: point[1])[1]
-            y_max = max(all_indices, key=lambda point: point[1])[1]
-            cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-        print('There')
+            y_values = np.array([point[1] for point in cluster])
+            x_values = (y_values - intercept) / slope
+            y_min = int(max(0, min(y_values)))
+            y_max = int(min(img.shape[0], max(y_values)))
+            x_min = min(all_indices, key=lambda point: point[0])[0]
+            x_max = max(all_indices, key=lambda point: point[0])[0]
+            cv2.rectangle(img, (int(x_min), y_min), (int(x_max), y_max), (0, 255, 0), 2)
+
         distnaces={}
         
         horizontal_distance=[]
@@ -251,8 +251,9 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
             x_max2 = int(min(img.shape[1], max([point[0] for point in clusters[i+1]])))
             y_min2 = int(min([point[1] for point in clusters[i+1]]))
             y_max2 = int(max([point[1] for point in clusters[i+1]]))
-            center2 = ((x_min2 + x_max2) // 2, (y_min2 + y_max2) // 2)
-            
+            center2 = ((x_min + x_max) // 2, (y_min2 + y_max2) // 2)
+            cv2.circle(img, center2, 5, (255,0 , 0), 3) 
+            cv2.circle(img, center1, 5, (255,0 , 0), 3)  # Draws a red point # Draws a red point
             # Calculate Euclidean distance
             distance = np.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
             distnaces[f'Cluster{i+1}-Cluster{i+2}']=distance

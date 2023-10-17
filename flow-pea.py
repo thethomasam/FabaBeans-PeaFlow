@@ -20,7 +20,8 @@ from peascription import peascripter
 # from pea_trainer_pytorch import train_network
 # from peatear import peatearer
 from pealabel import peaLabler
-from peadivide import peatearer
+# from peadivide import peatearer
+from peadivideH import peatearer
 
 """
 Automated Plant Analysis Workflow
