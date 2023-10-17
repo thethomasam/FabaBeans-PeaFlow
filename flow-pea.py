@@ -65,7 +65,8 @@ model_output="./models"
 
 
 
-pea_tearer_image="./analysis/15-6-10-orig.jpg"
+pea_tearer_image="./analysis/"
+
 pea_tearer_out ="./output/"
 rows=5
 cols=8
@@ -86,7 +87,7 @@ elif isResnet:
     _EPOCHS=20
 else:
     print('cnn_trainer')
-    _EPOCHS=20
+    _EPOCHS=25
     from cnn_trainer import train_network
 
 

@@ -6,6 +6,7 @@ import numpy as np
 import os
 import pandas as pd
 import sys
+from glob import glob
 
 
 from cnn_trainer import NeuralNetwork
@@ -102,7 +103,7 @@ def cli(image_path: str, out_dir_path: str, rows: int, columns: int, verbose: bo
 
     """
 def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False,isResnet=False):
-    if not os.path.isfile(image_path):
+    if not os.path.isdir(image_path):
         print(
             "\033[91mError: Given `image_path` doesn't exist.\033[00m", file=sys.stderr
         )
@@ -117,127 +118,155 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
     else:
         model_name='cnnmodel.pth'
     print(model_name)
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'mps')
     model = NeuralNetwork().to(device)
     model.load_state_dict(torch.load('./'+model_name))
     model.eval()
+    vertical_distnaces=[]
     # nn_model = tf.keras.models.load_model(os.path.join("models", "pnn-cnn-peascription.h5"))
+    for orig_img_path in glob(os.path.join(image_path, "*.png")):
+        img = cv2.imread(orig_img_path)
+        height, width, _ = img.shape
 
-    img = cv2.imread(image_path)
-    height, width, _ = img.shape
+        data = {"row": [], "column": [], "samples": []}
+        all_indices=[]
+        
+        
+        for i in range(rows):
+            for j in range(columns):
+                c1 = (height // rows * i, width // columns * j)
+                c2 = (height // rows * (i + 1), width // columns * (j + 1))
 
-    data = {"row": [], "column": [], "samples": []}
-    all_indices=[]
-    for i in range(rows):
-        for j in range(columns):
-            c1 = (height // rows * i, width // columns * j)
-            c2 = (height // rows * (i + 1), width // columns * (j + 1))
+                cell_img = img[c1[0] : c2[0], c1[1] : c2[1]]
+                output_copy = cell_img.copy()
 
-            cell_img = img[c1[0] : c2[0], c1[1] : c2[1]]
-            output_copy = cell_img.copy()
+                cell_height = cell_img.shape[0]
+                cell_width = cell_img.shape[1]
 
-            cell_height = cell_img.shape[0]
-            cell_width = cell_img.shape[1]
+                num_sub_rows = cell_height // SQUARE_SIZE * 2 - 1
+                num_sub_columns = cell_width // SQUARE_SIZE * 2 - 1
 
-            num_sub_rows = cell_height // SQUARE_SIZE * 2 - 1
-            num_sub_columns = cell_width // SQUARE_SIZE * 2 - 1
+                x_origin = (cell_width - (ceil(num_sub_columns / 2) * SQUARE_SIZE)) // 2
+                y_origin = (cell_height - (ceil(num_sub_rows / 2) * SQUARE_SIZE)) // 2
 
-            x_origin = (cell_width - (ceil(num_sub_columns / 2) * SQUARE_SIZE)) // 2
-            y_origin = (cell_height - (ceil(num_sub_rows / 2) * SQUARE_SIZE)) // 2
+                samples = 0
+                circle_centres = []
 
-            samples = 0
-            circle_centres = []
-
-            for m in range(num_sub_rows):
-                for n in range(num_sub_columns):
-                    x1, y1 = (
-                        x_origin + (n * (SQUARE_SIZE // 2)),
-                        y_origin + (m * (SQUARE_SIZE // 2)),
-                    )
-                    x2, y2 = (x1 + SQUARE_SIZE, y1 + SQUARE_SIZE)
-
-                    subcell_img = cell_img[y1:y2, x1:x2] / 255.0
-
-                    subcell_img = cell_img[y1:y2+2, x1:x2+2]
-                   
-                    subcell_img = cv2.cvtColor(subcell_img, cv2.COLOR_BGR2RGB)
-                    transform = Compose([ToTensor()])  # Normalises to 0-1
-                    subcell_img = transform(subcell_img).unsqueeze(dim=0).to(device)
-                    prediction =nn.functional.softmax(model(subcell_img)[0], dim=0)
-
-                    if not prediction[0].item() >  prediction[1].item():
-                        cv2.circle(
-                            output_copy,
-                            (x1 + SQUARE_SIZE // 2, y1 + SQUARE_SIZE // 2),
-                            32,
-                            (0, 255, 0),
-                            1,
+                for m in range(num_sub_rows):
+                    for n in range(num_sub_columns):
+                        x1, y1 = (
+                            x_origin + (n * (SQUARE_SIZE // 2)),
+                            y_origin + (m * (SQUARE_SIZE // 2)),
                         )
-                        centre = (x1 + SQUARE_SIZE // 2, y1 + SQUARE_SIZE // 2)
-                        circle_centres.append(centre)
+                        x2, y2 = (x1 + SQUARE_SIZE, y1 + SQUARE_SIZE)
 
-            circle_radii = [32]*len(circle_centres)
-            circles = list(zip(circle_centres, circle_radii))
+                        subcell_img = cell_img[y1:y2, x1:x2] / 255.0
 
-            # Merge circles
-            circles = merge_overlapping_circles(circles)
+                        subcell_img = cell_img[y1:y2+2, x1:x2+2]
+                    
+                        subcell_img = cv2.cvtColor(subcell_img, cv2.COLOR_BGR2RGB)
+                        transform = Compose([ToTensor()])  # Normalises to 0-1
+                        subcell_img = transform(subcell_img).unsqueeze(dim=0).to(device)
+                        prediction =nn.functional.softmax(model(subcell_img)[0], dim=0)
 
-            # Draw the circles and count the samples here instead.
-            for circle in circles:
-                samples += 1
+                        if not prediction[0].item() >  prediction[1].item():
+                            cv2.circle(
+                                output_copy,
+                                (x1 + SQUARE_SIZE // 2, y1 + SQUARE_SIZE // 2),
+                                32,
+                                (0, 255, 0),
+                                1,
+                            )
+                            centre = (x1 + SQUARE_SIZE // 2, y1 + SQUARE_SIZE // 2)
+                            circle_centres.append(centre)
 
-                centre = circle[0]
-                radius = circle[1]
-                colour = (255, 85, 255)  # magenta
-                thickness = 8  # very thick circle perimeter
-                cv2.circle(output_copy, centre, radius, colour, thickness)
-                centre_adjusted = (centre[0] + c1[1], centre[1] + c1[0])
-                all_indices.append(centre_adjusted)
+                circle_radii = [32]*len(circle_centres)
+                circles = list(zip(circle_centres, circle_radii))
+
+                # Merge circles
+                circles = merge_overlapping_circles(circles)
+
+                # Draw the circles and count the samples here instead.
+                for circle in circles:
+                    samples += 1
+
+                    centre = circle[0]
+                    radius = circle[1]
+                    colour = (255, 85, 255)  # magenta
+                    thickness = 8  # very thick circle perimeter
+                    cv2.circle(output_copy, centre, radius, colour, thickness)
+                    centre_adjusted = (centre[0] + c1[1], centre[1] + c1[0])
+                    all_indices.append(centre_adjusted)
 
 
-            data["row"].append(i + 1)
-            data["column"].append(j + 1)
-            data["samples"].append(samples)
-          
-            cv2.imwrite(
-                os.path.join(out_dir_path, "{},{}.jpg".format(i + 1, j + 1)),
-                output_copy,
-            )
+                data["row"].append(i + 1)
+                data["column"].append(j + 1)
+                data["samples"].append(samples)
+            
+                # cv2.imwrite(
+                #     os.path.join(out_dir_path, "{},{}.jpg".format(i + 1, j + 1)),
+                #     output_copy,
+                # )
 
-    df = pd.DataFrame(data)
-    coordinates_list=all_indices
-    for (x, y) in coordinates_list:
-        cv2.circle(img, (x, y), 5, (0, 0, 255), 3)  # Draws a red point
+        df = pd.DataFrame(data)
+        coordinates_list=all_indices
+        for (x, y) in coordinates_list:
+            cv2.circle(img, (x, y), 5, (0, 0, 255), 3)  # Draws a red point
 
-# Perform mean-based clustering
-    coordinates_array = np.array(coordinates_list)
-    print(len(all_indices))
-    num_clusters = 6
-    kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 0].reshape(-1, 1))
-    labels = kmeans.labels_
-    clusters = [[] for _ in range(num_clusters)]
+    # Perform mean-based clustering
+        coordinates_array = np.array(coordinates_list)
+        print(len(all_indices))
+        num_clusters = 6
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 0].reshape(-1, 1))
+        labels = kmeans.labels_
+        clusters = [[] for _ in range(num_clusters)]
 
-# Populate clusters
-    for i, label in enumerate(labels):
-        clusters[label].append(all_indices[i])
+    # Populate clusters
+        for i, label in enumerate(labels):
+            clusters[label].append(all_indices[i])
 
-    for i, cluster in enumerate(clusters):
-        slope, intercept = fit_line(cluster)
-        x_values = np.array([point[0] for point in cluster])
-        y_values =  slope * x_values + intercept
-        x_min = int(max(0, min(x_values)))
-        x_max = int(min(img.shape[1], max(x_values)))
-        y_min = min(all_indices, key=lambda point: point[1])[1]
-        y_max = max(all_indices, key=lambda point: point[1])[1]
-        cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-    print('There')
-    cv2.imwrite(
-                os.path.join(out_dir_path, "boxed_img.jpg"),
-                img,
-            )
+        for i, cluster in enumerate(clusters):
+            slope, intercept = fit_line(cluster)
+            x_values = np.array([point[0] for point in cluster])
+            y_values =  slope * x_values + intercept
+            x_min = int(max(0, min(x_values)))
+            x_max = int(min(img.shape[1], max(x_values)))
+            y_min = min(all_indices, key=lambda point: point[1])[1]
+            y_max = max(all_indices, key=lambda point: point[1])[1]
+            cv2.rectangle(img, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+        print('There')
+        distnaces={}
+        
+        horizontal_distance=[]
+        distnaces['Cluster1-Cluster2']=0
+        distnaces['Cluster2-Cluster3']=0
+        distnaces['Cluster3-Cluster4']=0
+        distnaces['Cluster4-Cluster5']=0
+        distnaces['Cluster5-Cluster6']=0
+        for i in range(len(clusters)-1):
+            
+            center1 = ((x_min + x_max) // 2, (y_min + y_max) // 2)
+            x_min2 = int(max(0, min([point[0] for point in clusters[i+1]])))
+            x_max2 = int(min(img.shape[1], max([point[0] for point in clusters[i+1]])))
+            y_min2 = int(min([point[1] for point in clusters[i+1]]))
+            y_max2 = int(max([point[1] for point in clusters[i+1]]))
+            center2 = ((x_min2 + x_max2) // 2, (y_min2 + y_max2) // 2)
+            
+            # Calculate Euclidean distance
+            distance = np.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
+            distnaces[f'Cluster{i+1}-Cluster{i+2}']=distance
+        vertical_distnaces.append(distnaces)
+        print(vertical_distnaces)
+        cv2.imwrite(
+                    os.path.join(out_dir_path, f'boxed_img{orig_img_path}.jpg'),
+                    img,
+                )
 
-    df.to_csv(os.path.join(out_dir_path, "ranking.csv"), index=False)
+        df.to_csv(os.path.join(out_dir_path, "ranking.csv"), index=False)
+       
+    vertical_distnaces=pd.DataFrame(vertical_distnaces)
+    vertical_distnaces.to_csv(os.path.join(out_dir_path, "vertical_distance.csv"))
     print('There finished')
-
 if __name__ == "__main__":
     cli()

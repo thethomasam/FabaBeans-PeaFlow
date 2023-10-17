@@ -178,9 +178,9 @@ def train_network(annotations_path,out_dir_path,epochs=5,learning_rate=0.001,isR
         model.fc = nn.Linear(in_features, num_classes)
         loss_fn = nn.CrossEntropyLoss()
         #optimiser = torch.optim.SGD(model.fc.parameters(), lr=0.0001, momentum=0.9)
-        optimiser = torch.optim.Adam(model.fc.parameters(), lr=0.01)
+        optimiser = torch.optim.Adam(model.fc.parameters(), lr=0.001)
         images = ImageDataset(annotations_path)
-        train_validation_split = [0.7, 0.3]
+        train_validation_split = [0.8, 0.3]
         batch_size=64
         images = random_split(images, lengths=train_validation_split)
         training_data, validation_data = images
@@ -193,9 +193,9 @@ def train_network(annotations_path,out_dir_path,epochs=5,learning_rate=0.001,isR
         model = NeuralNetwork().to(device)
         
         loss_fn = nn.CrossEntropyLoss()
-        optimiser = optim.RMSprop(model.parameters(), lr=0.0001)
-        batch_size = 64
-        train_validation_split = [0.7, 0.3]
+        optimiser = optim.RMSprop(model.parameters(), lr=0.001)
+        batch_size = 32
+        train_validation_split = [0.8, 0.2]
         print(model)
         print(annotations_path)
         images = ImageDataset(annotations_path)
@@ -238,7 +238,7 @@ def train_network(annotations_path,out_dir_path,epochs=5,learning_rate=0.001,isR
             total_train_loss += loss
             correct_train += (pred.argmax(dim=1) == y).sum().item()  # Count correct predictions
 
-        print(f"loss: {loss:>7f}  [{count:>4d}/{size:>4d}]")
+        # print(f"loss: {loss:>7f}  [{count:>4d}/{size:>4d}]")
 
     # Calculate training accuracy
         train_accuracy = correct_train / size
