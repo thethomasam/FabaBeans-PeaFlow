@@ -27,6 +27,7 @@ from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 
+
 SQUARE_SIZE = 64
 
 # copy/pasted from new peatear.py version: should work as is.
@@ -116,17 +117,20 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
     elif transformer:
         model_name='transformer_nnmodel.pth'
     else:
+        
         model_name='cnnmodel.pth'
-    print(model_name)
+    #print(model_name)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'mps')
     model = NeuralNetwork().to(device)
     model.load_state_dict(torch.load('./'+model_name))
     model.eval()
     vertical_distnaces=[]
+    column_wise_count=[]
     # nn_model = tf.keras.models.load_model(os.path.join("models", "pnn-cnn-peascription.h5"))
     for orig_img_path in glob(os.path.join(image_path, "*.png")):
         img = cv2.imread(orig_img_path)
+        #print(orig_img_path)
         height, width, _ = img.shape
 
         data = {"row": [], "column": [], "samples": []}
@@ -215,59 +219,73 @@ def peatearer(image_path, out_dir_path, rows, columns, verbose,transformer=False
             cv2.circle(img, (x, y), 5, (0, 0, 255), 3)  # Draws a red point
 
     # Perform mean-based clustering
+        
+
         coordinates_array = np.array(coordinates_list)
-        print(len(all_indices))
-        num_clusters = 35
+
+        num_clusters = 28
         kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(coordinates_array[:, 1].reshape(-1, 1))
         labels = kmeans.labels_
+        all_clusters={}
         clusters = [[] for _ in range(num_clusters)]
-
+        density={}
+        all_center=[]
+        
     # Populate clusters
         for i, label in enumerate(labels):
             clusters[label].append(all_indices[i])
+            all_clusters[label]=clusters[label]
 
         for i, cluster in enumerate(clusters):
-            slope, intercept = fit_line(cluster)
+            density[f'row {i+1}']=len(cluster)
             y_values = np.array([point[1] for point in cluster])
-            x_values = (y_values - intercept) / slope
+           
             y_min = int(max(0, min(y_values)))
             y_max = int(min(img.shape[0], max(y_values)))
             x_min = min(all_indices, key=lambda point: point[0])[0]
             x_max = max(all_indices, key=lambda point: point[0])[0]
             cv2.rectangle(img, (int(x_min), y_min), (int(x_max), y_max), (0, 255, 0), 2)
-
+            center = ((x_min + x_max) // 2, (y_min + y_max) // 2)
+            cv2.circle(img, center, 5, (255,0 , 0), 3)
+            all_center.append(center)
+   
         distnaces={}
+        density['Plot']=os.path.splitext(os.path.basename(orig_img_path))[0]
         
-        horizontal_distance=[]
-        distnaces['Cluster1-Cluster2']=0
-        distnaces['Cluster2-Cluster3']=0
-        distnaces['Cluster3-Cluster4']=0
-        distnaces['Cluster4-Cluster5']=0
-        distnaces['Cluster5-Cluster6']=0
-        for i in range(len(clusters)-1):
-            
-            center1 = ((x_min + x_max) // 2, (y_min + y_max) // 2)
-            x_min2 = int(max(0, min([point[0] for point in clusters[i+1]])))
-            x_max2 = int(min(img.shape[1], max([point[0] for point in clusters[i+1]])))
-            y_min2 = int(min([point[1] for point in clusters[i+1]]))
-            y_max2 = int(max([point[1] for point in clusters[i+1]]))
-            center2 = ((x_min + x_max) // 2, (y_min2 + y_max2) // 2)
-            cv2.circle(img, center2, 5, (255,0 , 0), 3) 
-            cv2.circle(img, center1, 5, (255,0 , 0), 3)  # Draws a red point # Draws a red point
-            # Calculate Euclidean distance
+        distnaces['Plot']=os.path.splitext(os.path.basename(orig_img_path))[0]
+        for i in range(1, num_clusters):
+            key = f'Cluster{i}-Cluster{i+1}'
+            distnaces[key] = 0
+        
+        for i in range(len(all_center)-1):
+            center1=all_center[i]
+            center2=all_center[i+1]
             distance = np.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
             distnaces[f'Cluster{i+1}-Cluster{i+2}']=distance
+      
         vertical_distnaces.append(distnaces)
-        print(vertical_distnaces)
+        column_wise_count.append(density)
+        #print(vertical_distnaces)
+        square_img_path = os.path.join(
+                 
+                   out_dir_path, 
+                    "{}.jpg".format(
+                        os.path.splitext(os.path.basename(orig_img_path))[0],
+                        
+                    ),
+                )
         cv2.imwrite(
-                    os.path.join(out_dir_path, 'boxed_img.jpg'),
+                    square_img_path,
                     img,
                 )
 
         df.to_csv(os.path.join(out_dir_path, "ranking.csv"), index=False)
        
     vertical_distnaces=pd.DataFrame(vertical_distnaces)
-    vertical_distnaces.to_csv(os.path.join(out_dir_path, "vertical_distance.csv"))
-    print('There finished')
+    print(os.path.splitext(os.path.basename(orig_img_path))[0])
+    
+    column_wise_count=pd.DataFrame(column_wise_count)
+    vertical_distnaces.to_csv(os.path.join(out_dir_path, "row_distance.csv"))
+    column_wise_count.to_csv(os.path.join(out_dir_path, "row_wise_count.csv"))
 if __name__ == "__main__":
     cli()

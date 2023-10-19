@@ -20,8 +20,8 @@ from peascription import peascripter
 # from pea_trainer_pytorch import train_network
 # from peatear import peatearer
 from pealabel import peaLabler
-# from peadivide import peatearer
-from peadivideH import peatearer
+from peadivide import peatearer
+from peadivideH import peatearer  as PeaTearHorizontal
 
 """
 Automated Plant Analysis Workflow
@@ -118,7 +118,7 @@ def all_runner(peascription_in_dir_path,peascription_out_dir_path,trainner_annot
     #     train_network(trainner_annotations,model_output,isResnet=isResnet,transformer=transformer,epochs=epochs)
     
     peatearer(pea_tearer_image, pea_tearer_out, rows, cols, transformer=transformer,isResnet=isResnet,verbose=False)
-
+    
     # run_labler = input('Do you want to run the labler Y/N\n')
     # if run_labler=='Y' or run_labler=='y':
     #     peaLabler(pea_tearer_out, peascription_out_dir_path, verbose)

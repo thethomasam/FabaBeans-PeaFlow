@@ -194,7 +194,7 @@ def train_network(annotations_path,out_dir_path,epochs=5,learning_rate=0.001,isR
         
         loss_fn = nn.CrossEntropyLoss()
         optimiser = optim.RMSprop(model.parameters(), lr=0.001)
-        batch_size = 32
+        batch_size = 64
         train_validation_split = [0.8, 0.2]
         print(model)
         print(annotations_path)
